@@ -25,6 +25,7 @@ namespace Spice.Website
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
             services.AddControllersWithViews();
             services.AddSingleton<ISpiceService, SpiceService>();
         }
@@ -46,7 +47,7 @@ namespace Spice.Website
             app.UseStaticFiles();
 
             app.UseRouting();
-
+            app.UseCors(builder => builder.AllowAnyOrigin());
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

@@ -1,15 +1,19 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Spice.Website.Models;
 using Spice.Website.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Spice.Website.Controllers
 {
+    [EnableCors("AllowAllOrigin")]
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
@@ -30,9 +34,26 @@ namespace Spice.Website.Controllers
         {
             return View();
         }
+        
         public async Task<IActionResult> Spices()
         {
-            ViewBag.Spices = (await _serv.GetSpicesAsync());
+            var httpMessage = new HttpRequestMessage();
+            httpMessage.RequestUri = new Uri("https://172.16.0.245:5001/SpiceBFF");
+            httpMessage.Method = HttpMethod.Get;
+            
+
+            using (var httpClient = new HttpClient())
+            {
+                var response = await httpClient.GetAsync("https://172.16.0.245:5001/SpiceBFF");
+                var response2 = await httpClient.SendAsync(httpMessage);
+                if (response != null)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    var res = JsonConvert.DeserializeObject<IEnumerable<Models.Spice>>(jsonString);
+                    ViewBag.Spices = res;
+                }
+                
+            }            
             return View();
         }
         public IActionResult AddSpice()
