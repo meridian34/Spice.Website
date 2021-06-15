@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Spice.Website.Models;
-using Spice.Website.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,11 +16,9 @@ namespace Spice.Website.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        private readonly ISpiceService _serv;
-
-        public HomeController(ILogger<HomeController> logger, ISpiceService serv)
+        
+        public HomeController(ILogger<HomeController> logger)
         {
-            _serv = serv;
             _logger = logger;
         }
 
@@ -40,20 +37,23 @@ namespace Spice.Website.Controllers
             var httpMessage = new HttpRequestMessage();
             httpMessage.RequestUri = new Uri("https://172.16.0.245:5001/SpiceBFF");
             httpMessage.Method = HttpMethod.Get;
-            
 
-            using (var httpClient = new HttpClient())
+            using (var httpClientHandler = new HttpClientHandler())
             {
-                var response = await httpClient.GetAsync("https://172.16.0.245:5001/SpiceBFF");
-                var response2 = await httpClient.SendAsync(httpMessage);
-                if (response != null)
+                httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                    var res = JsonConvert.DeserializeObject<IEnumerable<Models.Spice>>(jsonString);
-                    ViewBag.Spices = res;
+                    var response = await httpClient.SendAsync(httpMessage);
+                    if (response != null)
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync();
+                        var res = JsonConvert.DeserializeObject<IEnumerable<Models.Spice>>(jsonString);
+                        ViewBag.Spices = res;
+                    }
+
                 }
-                
-            }            
+            }
+
             return View();
         }
         public IActionResult AddSpice()
@@ -62,13 +62,27 @@ namespace Spice.Website.Controllers
         }
 
         [HttpPost]
-        public IActionResult AddSpice(string name, decimal price, double weight)
+        public async Task<IActionResult> AddSpice(string name, decimal price, double weight)
         {
             var s = new Spice.Website.Models.Spice();
             s.Name = name;
             s.Price = price;
             s.Weight = weight;
-            _serv.AddSpiceAsync(s);
+
+
+            var httpMessage = new HttpRequestMessage();
+            httpMessage.RequestUri = new Uri("https://172.16.0.245:5001/SpiceBFF");
+            httpMessage.Method = HttpMethod.Post;
+            httpMessage.Content = new StringContent(JsonConvert.SerializeObject(s), System.Text.Encoding.UTF8, "application/json");
+
+            using (var httpClientHandler = new HttpClientHandler())
+            {
+                httpClientHandler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                using (var httpClient = new HttpClient(httpClientHandler))
+                {
+                    var response = await httpClient.SendAsync(httpMessage);
+                }
+            }
             return View();
         }
 
